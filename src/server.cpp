@@ -17,6 +17,15 @@ std::vector<std::thread> threads;
 std::string directory = "/default/directory/path";
 
 
+bool fileExists(const std::string& path) {
+  struct stat buffer;
+  return (stat(path.c_str(), &buffer) == 0);
+}
+
+bool isSafePath(const std::string& base, const std::string& path) {
+  // simple check
+  return path.find(base) == 0;
+}
 
 
 bool readHTTPLine(std::istringstream& stream, std::string& line) {
@@ -29,19 +38,103 @@ bool readHTTPLine(std::istringstream& stream, std::string& line) {
   return false;
 }
 
+std::string getFileContent(std::string& full_path) {
+
+  std::ifstream file(full_path);
+
+  if (!file.is_open()) {
+
+    return "Could not open file: " + full_path + "\n";
+
+  }
+
+  std::stringstream buffer;
+
+  buffer << file.rdbuf();
+
+  return buffer.str();
+
+}
+
+std::string buildStatus200Response(const std::string& content, const std::string& contentType) {
+  std::ostringstream response_stream;
+
+  response_stream << "HTTP/1.1 200 OK\r\n";
+  response_stream << "Content-Type: " << contentType << "\r\n";
+  response_stream << "Content-Length: " << content.length() << "\r\n";
+  response_stream << "\r\n";
+  response_stream << content;
+
+  return response_stream.str();
+}
+
+std::string build201Response(const std::string content, const std::string contentType, const std::string full_path) {
+  std::ostringstream response_stream;
+
+  response_stream << "HTTP/1.1 201 Created\r\n";
+  response_stream << "Location: " << full_path << "\r\n";
+  response_stream << "Content-Type: " << contentType << "\r\n";
+  response_stream << "Content-Length: " << content.length() << "\r\n";
+  response_stream << "\r\n";
+
+  return response_stream.str();
+}
+
+std::string buildStatus404Response() {
+  std::ostringstream response_stream;
+
+  response_stream << "HTTP/1.1 404 Not Found\r\n\r\n";
+
+  return response_steram.str();
+}
+
+std::string buildStatus500Response() {
+  std::ostringstream response_stream;
+
+  response_stream << "HTTP/1.1 500 Internal Server Error\r\n";
+  response_stream << "Content-Length: 0\r\n";
+
+  return response_stream.str();
+}
+
+std::string post(std::string path, std::string host, std::string userAgent, std::string body) {
+
+  std::string response;
+  std::cout << "The path requested was: " << path << std::endl;
+  std::string filename;
+
+  if (path.find("/files/") == 0) {
+
+    filename = path.substr(7);
+
+    std::string full_path = directory + filename;
+    std::cout << "The full path is: " << full_path << std::endl;
+    std::ofstream file(full_path);
+
+    if (file.is_open()) {
+
+      file << body;
+      file.close();
+
+      return build201Response(body, "application/octet-stream", full_path);
+    }
+
+    return buildStatus500Response();
+  } else {
+    std::cout << "Operation not supported\n";
+    return buildStatus500Response();
+  }
+}
+
 
 std::string get(std::string path, std::string host, std::string userAgent) {
 
   std::string response;
-
   std::cout << "The path requested was: " << path << std::endl;
 
   if (path == "/") {
-
       response = "HTTP/1.1 200 OK \r\n\r\n";
-
-    } else {
-
+  } else {
       std::ostringstream response_stream;
 
       if (path.find("/echo/") == 0) {
@@ -50,32 +143,18 @@ std::string get(std::string path, std::string host, std::string userAgent) {
 
         std::string statement = path.substr(6);
 
-        return buildHttpResponse(statement, "text/plain");
-
-        return HttpResponseFactory::createResponse(200, statement, "text/plain")
-
-        .getResponseString();
-
+        return buildStatus200Response(statement, "text/plain");
+        // return HttpResponseFactory::createResponse(200, statement, "text/plain").getResponseString();
       }
-
       else if (path.find("/user-agent") == 0) {
-
         std::cout << "The GET request was a user-agent request\n";
 
         std::string statement = path.substr(11);
-
         std::string agent = userAgent.substr(12);
 
-        return buildHttpResponse(agent, "text/plain");
-
-        return HttpResponseFactory::createResponse(200, agent, "text/plain")
-
-        .getResponseString();
-
+        return buildStatus200Response(agent, "text/plain");
       }
-
       else if (path.find("/files/") == 0) {
-
         std::cout << "The GET request was a files request\n";
 
         std::string file_path = path.substr(7);
@@ -90,26 +169,26 @@ std::string get(std::string path, std::string host, std::string userAgent) {
 
             std::cout << "File exists: " << full_path << std::endl;
 
-            return HttpResponseFactory::createResponse(200, getFileContent(full_path), "application/octet-stream")
-
-            .getResponseString();
+            return buildStatus200Response(getFileContent(full_path), "application/octet-stream");
           } else {
 
             std::cout << "File does not exist: " << full_path << std::endl;
 
-            return HttpResponseFactory::createResponse(404).getResponseString();
+            return buildStatus404Response();
           }
 
         } else {}
         } else {
-          return HttpResponseFactory::createResponse(404).getResponseString();
+          return buildStatus404Response();
+          // return HttpResponseFactory::createResponse(404).getResponseString();
         }
 
-      }
-      std::cout << "The GET request was not yet supported\n";
+        std::cout << "The GET request was not yet supported\n";
+        // return HttpResponseFactory::createResponse(404).getResponseString();
+        return buildStatus404Response();
 
-      return ;
-    }
+      }
+
   return response;
 }
 

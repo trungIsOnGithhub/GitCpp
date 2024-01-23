@@ -130,7 +130,8 @@ std::string get(std::string path, std::string host, std::string userAgent) {
 
   if (path == "/") {
       response = "HTTP/1.1 200 OK \r\n\r\n";
-  } else {
+  }
+  else {
       std::ostringstream response_stream;
 
       if (path.find("/echo/") == 0) {

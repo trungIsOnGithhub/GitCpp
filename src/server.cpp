@@ -30,22 +30,19 @@ bool isSafePath(const std::string& base, const std::string& path) {
 
 bool readHTTPLine(std::istringstream& stream, std::string& line) {
   if (std::getline(stream, line, '\r')) {
-    if (stream.peek() == '\n') {
+    if (stream.peek() == '\n')
       stream.get();
-    }
+
     return true;
   }
   return false;
 }
 
 std::string getFileContent(std::string& full_path) {
-
   std::ifstream file(full_path);
 
   if (!file.is_open()) {
-
     return "Could not open file: " + full_path + "\n";
-
   }
 
   std::stringstream buffer;
@@ -53,7 +50,6 @@ std::string getFileContent(std::string& full_path) {
   buffer << file.rdbuf();
 
   return buffer.str();
-
 }
 
 std::string buildStatus200Response(const std::string& content, const std::string& contentType) {
@@ -109,10 +105,10 @@ std::string post(std::string path, std::string host, std::string userAgent, std:
 
     std::string full_path = directory + filename;
     std::cout << "The full path is: " << full_path << std::endl;
+
     std::ofstream file(full_path);
 
     if (file.is_open()) {
-
       file << body;
       file.close();
 
@@ -120,10 +116,10 @@ std::string post(std::string path, std::string host, std::string userAgent, std:
     }
 
     return buildStatus500Response();
-  } else {
-    std::cout << "Operation not supported\n";
-    return buildStatus500Response();
   }
+
+  std::cout << "Operation not supported\n";
+  return buildStatus500Response();
 }
 
 
@@ -170,18 +166,19 @@ std::string get(std::string path, std::string host, std::string userAgent) {
             std::cout << "File exists: " << full_path << std::endl;
 
             return buildStatus200Response(getFileContent(full_path), "application/octet-stream");
-          } else {
+          }
+          else {
 
             std::cout << "File does not exist: " << full_path << std::endl;
 
             return buildStatus404Response();
           }
-
-        } else {}
-        } else {
-          return buildStatus404Response();
-          // return HttpResponseFactory::createResponse(404).getResponseString();
         }
+      }
+      else {
+        return buildStatus404Response();
+        // return HttpResponseFactory::createResponse(404).getResponseString();
+      }
 
         std::cout << "The GET request was not yet supported\n";
         // return HttpResponseFactory::createResponse(404).getResponseString();
@@ -194,7 +191,7 @@ std::string get(std::string path, std::string host, std::string userAgent) {
 
 
 void handleClient(int client_socket_fd) {
-  const ssize_t buffer_size = 500;
+  const ssize_t buffer_size = 512;
   char buffer[buffer_size];
 
   memset(buffer, 0, buffer_size);
